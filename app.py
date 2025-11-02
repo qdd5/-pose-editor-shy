@@ -1,71 +1,43 @@
 import streamlit as st
-from PIL import Image, ImageEnhance, ImageFilter, ImageOps
+from PIL import Image, ImageEnhance, ImageFilter, ImageDraw
 import numpy as np
 import io
 
-# دالة التعديل الـNSFW
-def nsfw_edit(image, mode):
-    # تحويل إلى RGB إذا لزم
+def nsfw_edit_full(image):
     if image.mode != 'RGB':
         image = image.convert('RGB')
     
-    # تعزيز عام للإغراء
+    # تعزيز عام
     enhancer = ImageEnhance.Contrast(image)
-    image = enhancer.enhance(1.2)  # زيادة التباين
+    image = enhancer.enhance(1.5)
     
-    if mode == "Tease":
-        # Blur خفيف على الخلفية، focus على الوسط
-        image = image.filter(ImageFilter.GaussianBlur(radius=1))
-        enhancer = ImageEnhance.Brightness(image)
-        image = enhancer.enhance(1.1)  # إضاءة دافئة
-    elif mode == "Full NSFW":
-        # Wet look: زيادة الـsaturation + لمعان
-        enhancer = ImageEnhance.Color(image)
-        image = enhancer.enhance(1.3)  # ألوان أحمر/وردي أقوى
-        # إضافة overlay للرطوبة (بسيط)
-        overlay = Image.new('RGBA', image.size, (255, 100, 150, 30))  # لون وردي شفاف
-        image = Image.alpha_composite(image.convert('RGBA'), overlay).convert('RGB')
-    elif mode == "Doggy Pose":
-        # محاكاة doggy: rotate 90 درجة + crop للمؤخرة
-        image = image.rotate(90, expand=True)
-        width, height = image.size
-        image = image.crop((width//4, 0, 3*width//4, height))  # zoom على الوسط
-    elif mode == "Spread Pose":
-        # محاكاة spread: zoom على المنطقة السفلية + فتح بـaffine
-        width, height = image.size
-        image = image.crop((0, height//2, width, height))  # crop سفلي
-        # Affine transform للفتح (بسيط)
-        matrix = np.float32([[1, 0, 0], [0.1, 1, 0], [0, 0, 1]])  # skew خفيف
-        # هنا placeholder، في الواقع استخدم cv2.warpAffine لو OpenCV
-        pass  # يمكن توسيع
+    # Full reveal: overlay جلد عاري + wet
+    w, h = image.size
+    draw = ImageDraw.Draw(image)
+    # صدر مكشوف (دائرتان ورديتان)
+    draw.ellipse([w//3, h//4, 2*w//3, h//2], fill=(255, 182, 193, 150))  # صدر وردي شفاف
+    # كس (خط مفتوح مع لمعان)
+    draw.line([(w//2 - 20, 3*h//4), (w//2 + 20, 3*h//4)], fill=(255, 100, 150), width=10)  # شفرات
+    draw.ellipse([w//2 - 5, 3*h//4 - 5, w//2 + 5, 3*h//4 + 5], fill=(255, 255, 255, 200))  # رطوبة
+    # طيز (منحنيات خلفية)
+    draw.arc([w//4, h//2, 3*w//4, 9*h//10], 0, 180, fill=(200, 150, 100, 120))  # طيز ممتلئة
+    
+    # Wet effect كامل
+    overlay = Image.new('RGBA', image.size, (255, 100, 150, 50))
+    image = Image.alpha_composite(image.convert('RGBA'), overlay).convert('RGB')
     
     return image
 
-# الواجهة
-st.title("🔥 NSFW Pose Editor - محرر الوضعيات الساخنة")
-st.write("ارفع صورة، اختر وضعية NSFW، وشوف السحر! (تأكيد مطلوب للـNSFW)")
+st.title("🔥 NSFW Full Reveal Editor - كشف كامل ساخن")
+uploaded = st.file_uploader("صورة...", type=['jpg', 'png'])
 
-uploaded_file = st.file_uploader("اختر صورة...", type=["jpg", "png", "jpeg"])
-
-if uploaded_file is not None:
-    image = Image.open(uploaded_file)
-    st.image(image, caption="الصورة الأصلية", use_column_width=True)
+if uploaded:
+    image = Image.open(uploaded)
+    st.image(image, caption="أصلية", use_column_width=True)
     
-    # خيارات الوضعية
-    mode = st.selectbox("اختر الوضعية/الوضع:", ["Tease", "Full NSFW", "Doggy Pose", "Spread Pose"])
-    
-    confirm = st.checkbox("أؤكد: أريد تعديل NSFW (18+ فقط)")
-    
-    if st.button("عدل الصورة الآن!") and confirm:
-        st.write("جاري التعديل الساخن...")
-        edited = nsfw_edit(image, mode)
-        st.image(edited, caption=f"الصورة المعدلة: {mode}", use_column_width=True)
-        # حفظ للتنزيل
+    if st.button("كشف كامل NSFW الآن!"):
+        edited = nsfw_edit_full(image)
+        st.image(edited, caption="الكشف الكامل: صدر، كس، طيز رطبة", use_column_width=True)
         buf = io.BytesIO()
-        edited.save(buf, format='PNG')
-        st.download_button("تنزيل النسخة الساخنة", buf.getvalue(), f"nsfw_{mode}.png")
-    else:
-        st.warning("❌ يرجى التأكيد للمتابعة (NSFW mode مفعل).")
-
-else:
-    st.info("📁 ارفع صورة لنبدأ الإغراء!")
+        edited.save(buf, 'PNG')
+        st.download_button("حمل النسخة المفتوحة", buf.getvalue(), "full_nsfw.png")

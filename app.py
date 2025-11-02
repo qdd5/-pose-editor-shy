@@ -3,41 +3,45 @@ from PIL import Image, ImageEnhance, ImageFilter, ImageDraw
 import numpy as np
 import io
 
-def nsfw_edit_full(image):
+def nsfw_full_reveal(image):
     if image.mode != 'RGB':
         image = image.convert('RGB')
     
-    # تعزيز عام
-    enhancer = ImageEnhance.Contrast(image)
-    image = enhancer.enhance(1.5)
-    
-    # Full reveal: overlay جلد عاري + wet
     w, h = image.size
     draw = ImageDraw.Draw(image)
-    # صدر مكشوف (دائرتان ورديتان)
-    draw.ellipse([w//3, h//4, 2*w//3, h//2], fill=(255, 182, 193, 150))  # صدر وردي شفاف
-    # كس (خط مفتوح مع لمعان)
-    draw.line([(w//2 - 20, 3*h//4), (w//2 + 20, 3*h//4)], fill=(255, 100, 150), width=10)  # شفرات
-    draw.ellipse([w//2 - 5, 3*h//4 - 5, w//2 + 5, 3*h//4 + 5], fill=(255, 255, 255, 200))  # رطوبة
-    # طيز (منحنيات خلفية)
-    draw.arc([w//4, h//2, 3*w//4, 9*h//10], 0, 180, fill=(200, 150, 100, 120))  # طيز ممتلئة
+    
+    # صدر مكشوف
+    draw.ellipse([w//3, h//4, 2*w//3, h//2], fill=(240, 180, 200, 180))  # ثدي وردي شفاف
+    draw.ellipse([w//3 + 10, h//3, w//3 + 30, h//3 + 20], fill=(200, 100, 150))  # حلمة يسار
+    draw.ellipse([2*w//3 - 30, h//3, 2*w//3 - 10, h//3 + 20], fill=(200, 100, 150))  # حلمة يمين
+    
+    # كس مفتوح
+    draw.line([(w//2 - 30, 3*h//4), (w//2 + 30, 3*h//4)], fill=(255, 150, 180), width=15)  # شفرات
+    draw.ellipse([w//2 - 5, 3*h//4 - 5, w//2 + 5, 3*h//4 + 5], fill=(255, 255, 255, 220))  # رطوبة
+    
+    # طيز ممتلئة
+    draw.ellipse([w//4, h//2, 3*w//4, h], fill=(220, 180, 140, 150))  # طيز بني شفاف
     
     # Wet effect كامل
-    overlay = Image.new('RGBA', image.size, (255, 100, 150, 50))
+    enhancer = ImageEnhance.Color(image)
+    image = enhancer.enhance(1.6)
+    overlay = Image.new('RGBA', image.size, (255, 100, 150, 70))
     image = Image.alpha_composite(image.convert('RGBA'), overlay).convert('RGB')
     
     return image
 
-st.title("🔥 NSFW Full Reveal Editor - كشف كامل ساخن")
+st.title("🔥 NSFW Full Reveal – كشف كامل (صدر، كس، طيز)")
 uploaded = st.file_uploader("صورة...", type=['jpg', 'png'])
 
 if uploaded:
     image = Image.open(uploaded)
     st.image(image, caption="أصلية", use_column_width=True)
     
-    if st.button("كشف كامل NSFW الآن!"):
-        edited = nsfw_edit_full(image)
-        st.image(edited, caption="الكشف الكامل: صدر، كس، طيز رطبة", use_column_width=True)
+    if st.button("كشف كامل NSFW!"):
+        edited = nsfw_full_reveal(image)
+        st.image(edited, caption="الكشف الكامل الساخن", use_column_width=True)
         buf = io.BytesIO()
         edited.save(buf, 'PNG')
-        st.download_button("حمل النسخة المفتوحة", buf.getvalue(), "full_nsfw.png")
+        st.download_button("حملها عارية", buf.getvalue(), "full_nude_nsfw.png")
+
+st.info("الآن هيبقى التعديل واضح – جرب تاني!")

@@ -3,9 +3,9 @@ import requests
 from PIL import Image
 from io import BytesIO
 
-# Hugging Face API (مجاني، غيّر الـTOKEN بتوكنك من huggingface.co/settings/tokens)
+# Hugging Face API (غيّر الـTOKEN بتوكنك من huggingface.co/settings/tokens)
 API_URL = "https://api-inference.huggingface.co/models/runwayml/stable-diffusion-v1-5"
-API_TOKEN = "hf_YourTokenHere"  # سجل مجاناً وانسخ التوكن
+API_TOKEN = "hf_YourTokenHere"  # سجل مجاناً وانسخ
 
 headers = {"Authorization": f"Bearer {API_TOKEN}"}
 
@@ -15,13 +15,11 @@ def query(prompt, image):
     image.save(img_bytes, format="PNG")
     img_bytes = img_bytes.getvalue()
     
-    payload = {
-        "inputs": prompt,
-        "image": img_bytes,
-        "parameters": {"num_inference_steps": 20, "guidance_scale": 7.5}
-    }
+    # إرسال كـform data (مش JSON) للـimg2img
+    files = {"image": ("image.png", img_bytes, "image/png")}
+    data = {"inputs": prompt, "parameters": {"num_inference_steps": 20, "guidance_scale": 7.5}}
     
-    response = requests.post(API_URL, headers=headers, json=payload)
+    response = requests.post(API_URL, headers=headers, files=files, data=data)
     return response.content
 
 st.title("🎨 Anime to Real Converter – تحويل أنمي/هنتاي إلى واقعي")
@@ -39,7 +37,7 @@ if uploaded_file is not None:
         with st.spinner("جاري التحويل... (10-30 ثانية)"):
             output = query(prompt, image)
             
-            if output:
+            if output and len(output) > 0:
                 result_image = Image.open(BytesIO(output))
                 st.image(result_image, caption="الصورة الواقعية", use_column_width=True)
                 
@@ -48,7 +46,7 @@ if uploaded_file is not None:
                 result_image.save(buf, format="PNG")
                 st.download_button("حمل النتيجة", buf.getvalue(), "real_photo.png")
             else:
-                st.error("فشل – تأكد من التوكن أو جرب تاني!")
+                st.error("فشل – تأكد من التوكن أو جرب تاني (API مشغول)")
 
 else:
     st.info("📁 ارفع صورة أنمي لتبدأ!")

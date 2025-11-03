@@ -4,22 +4,31 @@ from PIL import Image
 from io import BytesIO
 
 # Hugging Face API (غيّر الـTOKEN بتوكنك من huggingface.co/settings/tokens)
-API_URL = "https://api-inference.huggingface.co/models/runwayml/stable-diffusion-v1-5"
-API_TOKEN = "hf_YourTokenHere"  # سجل مجاناً وانسخ
+API_URL = "https://api-inference.huggingface.co/models/CompVis/stable-diffusion-v1-4"  # img2img model
+API_TOKEN = "hf_YourTokenHere"  # انسخ توكنك هنا
 
 headers = {"Authorization": f"Bearer {API_TOKEN}"}
 
 def query(prompt, image):
-    # تحويل الصورة إلى bytes
     img_bytes = BytesIO()
     image.save(img_bytes, format="PNG")
     img_bytes = img_bytes.getvalue()
     
-    # إرسال كـform data (مش JSON) للـimg2img
+    # Multipart form for img2img
     files = {"image": ("image.png", img_bytes, "image/png")}
-    data = {"inputs": prompt, "parameters": {"num_inference_steps": 20, "guidance_scale": 7.5}}
+    data = {"inputs": prompt, "parameters": {"num_inference_steps": 20, "guidance_scale": 7.5, "strength": 0.75}}  # strength for img2img
     
     response = requests.post(API_URL, headers=headers, files=files, data=data)
+    
+    # معالجة الأخطاء
+    if response.status_code != 200:
+        st.error(f"API Error: {response.status_code} - {response.text}")
+        return None
+    
+    if len(response.content) < 100:  # لو response صغير (نص خطأ)
+        st.error(f"API Response Error: {response.text}")
+        return None
+    
     return response.content
 
 st.title("🎨 Anime to Real Converter – تحويل أنمي/هنتاي إلى واقعي")
@@ -37,22 +46,26 @@ if uploaded_file is not None:
         with st.spinner("جاري التحويل... (10-30 ثانية)"):
             output = query(prompt, image)
             
-            if output and len(output) > 0:
-                result_image = Image.open(BytesIO(output))
-                st.image(result_image, caption="الصورة الواقعية", use_column_width=True)
-                
-                # تنزيل
-                buf = BytesIO()
-                result_image.save(buf, format="PNG")
-                st.download_button("حمل النتيجة", buf.getvalue(), "real_photo.png")
+            if output:
+                try:
+                    result_image = Image.open(BytesIO(output))
+                    st.image(result_image, caption="الصورة الواقعية", use_column_width=True)
+                    
+                    # تنزيل
+                    buf = BytesIO()
+                    result_image.save(buf, format="PNG")
+                    st.download_button("حمل النتيجة", buf.getvalue(), "real_photo.png")
+                except Exception as e:
+                    st.error(f"خطأ في فتح الصورة: {e}. الـAPI رجع بيانات غير صالحة.")
             else:
-                st.error("فشل – تأكد من التوكن أو جرب تاني (API مشغول)")
+                st.error("فشل الـAPI – تأكد من التوكن أو جرب بعد دقيقة (الـmodel مشغول).")
 
 else:
     st.info("📁 ارفع صورة أنمي لتبدأ!")
 
 # تعليمات
 st.sidebar.title("كيفية التشغيل")
-st.sidebar.write("1. احصل على توكن مجاني من [Hugging Face](https://huggingface.co/settings/tokens).")
+st.sidebar.write("1. توكن مجاني: [Hugging Face Tokens](https://huggingface.co/settings/tokens).")
 st.sidebar.write("2. شغّل: `streamlit run app.py`.")
-st.sidebar.write("3. جرب صورة أنمي – النتيجة واقعية رهيبة!")
+st.sidebar.write("3. لو خطأ، جرب prompt بسيط: 'photorealistic woman'.")
+st.sidebar.write("4. النتيجة: واقعية مع جلد ناعم وتفاصيل حقيقية!")

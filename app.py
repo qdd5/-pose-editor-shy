@@ -3,9 +3,9 @@ import requests
 from PIL import Image
 from io import BytesIO
 
-# Hugging Face API (غيّر الـTOKEN بتوكنك من huggingface.co/settings/tokens)
-API_URL = "https://api-inference.huggingface.co/models/CompVis/stable-diffusion-v1-4"  # img2img model
-API_TOKEN = "hf_YourTokenHere"  # انسخ توكنك هنا
+# Hugging Face API الجديد (2025) – غيّر الـTOKEN بتوكنك من huggingface.co/settings/tokens
+API_URL = "https://router.huggingface.co/hf-inference"
+API_TOKEN = "hf_YourTokenHere"  # سجل مجاناً وانسخ التوكن
 
 headers = {"Authorization": f"Bearer {API_TOKEN}"}
 
@@ -14,15 +14,19 @@ def query(prompt, image):
     image.save(img_bytes, format="PNG")
     img_bytes = img_bytes.getvalue()
     
-    # Multipart form for img2img
+    # Multipart form for img2img (الطريقة الجديدة)
     files = {"image": ("image.png", img_bytes, "image/png")}
-    data = {"inputs": prompt, "parameters": {"num_inference_steps": 20, "guidance_scale": 7.5, "strength": 0.75}}  # strength for img2img
+    data = {
+        "model": "CompVis/stable-diffusion-v1-4",  # المودل img2img
+        "inputs": prompt,
+        "parameters": {"num_inference_steps": 20, "guidance_scale": 7.5, "strength": 0.75}  # strength للتحويل
+    }
     
     response = requests.post(API_URL, headers=headers, files=files, data=data)
     
-    # معالجة الأخطاء
+    # معالجة الأخطاء الجديدة
     if response.status_code != 200:
-        st.error(f"API Error: {response.status_code} - {response.text}")
+        st.error(f"API Error: {response.status_code} - {response.text[:200]}...")  # طباعة جزء من الخطأ
         return None
     
     if len(response.content) < 100:  # لو response صغير (نص خطأ)
@@ -56,9 +60,9 @@ if uploaded_file is not None:
                     result_image.save(buf, format="PNG")
                     st.download_button("حمل النتيجة", buf.getvalue(), "real_photo.png")
                 except Exception as e:
-                    st.error(f"خطأ في فتح الصورة: {e}. الـAPI رجع بيانات غير صالحة.")
+                    st.error(f"خطأ في فتح الصورة: {e}. جرب prompt أقصر أو بعد دقيقة.")
             else:
-                st.error("فشل الـAPI – تأكد من التوكن أو جرب بعد دقيقة (الـmodel مشغول).")
+                st.error("فشل الـAPI – تأكد من التوكن أو الـmodel مشغول. جرب بعد دقيقة.")
 
 else:
     st.info("📁 ارفع صورة أنمي لتبدأ!")
@@ -67,5 +71,5 @@ else:
 st.sidebar.title("كيفية التشغيل")
 st.sidebar.write("1. توكن مجاني: [Hugging Face Tokens](https://huggingface.co/settings/tokens).")
 st.sidebar.write("2. شغّل: `streamlit run app.py`.")
-st.sidebar.write("3. لو خطأ، جرب prompt بسيط: 'photorealistic woman'.")
+st.sidebar.write("3. لو خطأ 410، الـAPI جديد – الكود مصحح.")
 st.sidebar.write("4. النتيجة: واقعية مع جلد ناعم وتفاصيل حقيقية!")

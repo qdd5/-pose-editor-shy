@@ -1,83 +1,100 @@
-import streamlit as st
-import requests
-from PIL import Image
-from io import BytesIO
-import base64
+import time
+import random
 
-# Stability AI API (غيّر الـKEY بكي من stability.ai/dashboard)
-API_URL = "https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/image-to-image"
-API_KEY = "sk-your-stability-key-here"  # انسخ الكي هنا
+class Character:
+    def __init__(self, name, age, relation, personality):
+        self.name = name
+        self.age = age
+        self.relation = relation
+        self.lust = 25
+        self.mood = "طبيعي"  # طبيعي, خجول, مشتعل, متردد
+        self.personality = personality  # "خجولة", "شرموطة", "أمومية"
 
-headers = {
-    "Authorization": f"Bearer {API_KEY}",
-    "Content-Type": "application/json",
-    "Accept": "application/json"
-}
+    def respond(self, action):
+        responses = []
+        if self.lust < 40:
+            responses = ["يا ولدي شو هالكلام...", "أنت مجنون...", "لا... حرام"]
+        elif self.lust < 70:
+            responses = ["جسمي سخن...", "لا تكلم كذا...", f"تعال قرب يا {self.relation}"]
+        else:
+            responses = ["خذني...", "أبغى أكثر...", "أنا قحبتك دلوقتي 💦"]
+        
+        return random.choice(responses)
 
-def query(prompt, image):
-    # تحويل الصورة إلى base64
-    img_bytes = BytesIO()
-    image.save(img_bytes, format="PNG")
-    img_bytes = img_bytes.getvalue()
-    image_base64 = base64.b64encode(img_bytes).decode('utf-8')
-    
-    payload = {
-        "text_prompts": [{"text": prompt, "weight": 1}],
-        "init_image": image_base64,
-        "init_image_mode": "IMAGE_STRENGTH",
-        "image_strength": 0.75,  # قوة التحويل (0.75 = واقعي مع الحفاظ على الشكل)
-        "cfg_scale": 7.5,  # guidance scale
-        "steps": 30,  # خطوات
-        "samples": 1,  # عدد الصور
-        "width": 1024,
-        "height": 1024
-    }
-    
-    response = requests.post(API_URL, headers=headers, json=payload)
-    
-    if response.status_code != 200:
-        st.error(f"API Error: {response.status_code} - {response.text[:200]}...")
-        return None
-    
-    data = response.json()
-    if "artifacts" in data and len(data["artifacts"]) > 0:
-        artifact = data["artifacts"][0]
-        return base64.b64decode(artifact["base64"])
-    else:
-        st.error(f"API Response Error: {data}")
-        return None
+# الشخصيات
+mom = Character("نورة", 40, "الأم", "أمومية")
+sis = Character("لين", 18, "الأخت", "خجولة")
+aunt = Character("ريم", 28, "الخالة", "شرموطة")
 
-st.title("🎨 Anime to Real Converter – تحويل أنمي/هنتاي إلى واقعي")
-st.write("ارفع صورة خيالية، وشوفها تبقى واقعية في ثواني!")
+family = {"امي": mom, "اختي": sis, "خالتي": aunt}
 
-uploaded_file = st.file_uploader("اختر صورة أنمي/هنتاي...", type=["jpg", "png", "jpeg"])
+def slow_print(text):
+    for char in text:
+        print(char, end='', flush=True)
+        time.sleep(0.025)
+    print()
 
-if uploaded_file is not None:
-    image = Image.open(uploaded_file).convert("RGB")
-    st.image(image, caption="الصورة الخيالية", use_column_width=True)
+def status():
+    print("\n" + "═"*60)
+    print(f"رغبتك: {player_lust}/100")
+    for name, char in family.items():
+        print(f"{name} ({char.name} - {char.age}) | Lust: {char.lust} | Mood: {char.mood}")
+    print("═"*60)
+
+player_lust = 40
+current_location = "الصالة"
+
+slow_print("🌙 مرحبًا في محاكاة العائلة السعودية - النسخة المطورة 🔥")
+slow_print("اكتب ما تريد تفعله (مثال: أقبل أمي، ألمس طيز لين، أقول لخالتي كلام قذر...)")
+
+while True:
+    status()
+    print(f"\nالمكان الحالي: {current_location}")
+    action = input("\nماذا تفعل؟ (اكتب بالعربي): ").strip()
     
-    prompt = st.text_input("وصف التحويل (اختياري)", "photorealistic version of this anime character, high detail, real skin, 8k")
+    if action.lower() in ["خروج", "exit", "0"]:
+        slow_print("يلا مع السلامة يا ابن العائلة 😉")
+        break
     
-    if st.button("حوّل إلى واقعي!"):
-        with st.spinner("جاري التحويل... (10-30 ثانية)"):
-            output = query(prompt, image)
+    # تحليل الفعل
+    target = None
+    if "امي" in action or "نورة" in action:
+        target = mom
+        char_name = "امي"
+    elif "اختي" in action or "لين" in action:
+        target = sis
+        char_name = "اختي"
+    elif "خالتي" in action or "ريم" in action:
+        target = aunt
+        char_name = "خالتي"
+    
+    if target:
+        slow_print(f"\n→ تتفاعل مع {target.name}...")
+        response = target.respond(action)
+        slow_print(f"{target.name}: {response}")
+        
+        # تأثير على Lust
+        if any(word in action for word in ["لمس", "قبل", "طيز", "بزاز", "نيك", "قحبة"]):
+            target.lust += 22
+            player_lust += 18
+        elif any(word in action for word in ["كلام", "قول", "دلع"]):
+            target.lust += 12
+            player_lust += 8
+        else:
+            target.lust += 8
+            player_lust += 5
             
-            if output:
-                result_image = Image.open(BytesIO(output))
-                st.image(result_image, caption="الصورة الواقعية", use_column_width=True)
-                
-                # تنزيل
-                buf = BytesIO()
-                result_image.save(buf, format="PNG")
-                st.download_button("حمل النتيجة", buf.getvalue(), "real_photo.png")
-            else:
-                st.error("فشل – تأكد من الـKEY أو جرب تاني.")
+        # تحديث المود
+        if target.lust > 70:
+            target.mood = "مشتعلة جداً"
+        elif target.lust > 45:
+            target.mood = "مثارة"
+    else:
+        slow_print("ما فهمت الفعل... حاول تصف تصرفك بشكل أوضح.")
+    
+    # كاب
+    if player_lust > 100: player_lust = 100
+    for char in family.values():
+        if char.lust > 100: char.lust = 100
 
-else:
-    st.info("📁 ارفع صورة أنمي لتبدأ!")
-
-# تعليمات
-st.sidebar.title("كيفية التشغيل")
-st.sidebar.write("1. KEY مجاني: [Stability AI Dashboard](https://stability.ai/dashboard).")
-st.sidebar.write("2. شغّل: `streamlit run app.py`.")
-st.sidebar.write("3. النتيجة: واقعية مع جلد ناعم وتفاصيل حقيقية!")
+print("\nانتهت الجلسة.")
